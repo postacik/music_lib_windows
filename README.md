@@ -1,15 +1,9 @@
 # music_lib_windows
 
-A new flutter plugin project.
+A Flutter package to list midi devices attached to Windows and listen to midi in events from any of the attached devices.
 
-## Getting Started
+flutter_midi_command (https://github.com/InvisibleWrench/FlutterMidiCommand) package supports only Android, iOS and MacOS so I created this package to use in Flutter Windows applications.
 
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/developing-packages/),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
+The code in the library was copied from win32_midi (https://github.com/ghost23/win32_midi) project and refined for multiple subscriptions.
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
+An example application can be found in the example folder.
