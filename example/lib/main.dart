@@ -28,6 +28,9 @@ class _MyAppState extends State<MyApp> {
 
   void onMidiMessage(int midiPort, MidiMessage message) {
     print('midiPort: $midiPort -> ${message.timestamp}: $message');
+    setState(() {
+      _hello = "${message.data?.note}";
+    });
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -75,7 +78,14 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: Text('Say hello: $_hello\n'),
+          child: InkWell(
+            child: Text('Say hello: $_hello\n'),
+            onTap: () {
+              setState(() {
+                _hello = "Hi";
+              });
+            },
+          ),
         ),
       ),
     );
