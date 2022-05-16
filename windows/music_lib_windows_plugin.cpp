@@ -120,7 +120,7 @@ void CALLBACK MidiInProc(HMIDIIN hMidiIn, UINT wMsg, DWORD dwInstance, DWORD dwP
 MMRESULT openMidiInput(DWORD port, Dart_Port callbackPort)
 {
     HMIDIIN hMidiDevice{NULL};
-    MMRESULT result = midiInOpen(&hMidiDevice, port, (DWORD_PTR)(void *)MidiInProc, 0, CALLBACK_FUNCTION);
+    MMRESULT result = midiInOpen(&hMidiDevice, port, (DWORD_PTR)(void *)MidiInProc, port, CALLBACK_FUNCTION);
     midiInHandles[port] = hMidiDevice;
     midiInPorts[hMidiDevice] = port;
     callbackPorts[port] = callbackPort;

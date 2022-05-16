@@ -7,7 +7,7 @@ import 'dart:ffi';
 final DynamicLibrary _nativeLib =
     DynamicLibrary.open('music_lib_windows_plugin.dll');
 
-final _nRegisterPostCObject = _nativeLib.lookupFunction<
+final _registerPostCObject = _nativeLib.lookupFunction<
     Void Function(
         Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>>
             functionPointer),
@@ -22,22 +22,26 @@ final _getMidiInDeviceCapabilities = _nativeLib.lookupFunction<
     MIDIINCAPS Function(Int32 i),
     MIDIINCAPS Function(int i)>('getMidiInDeviceCapabilities');
 
-final _nOpenMidiInput = _nativeLib.lookupFunction<
+final _openMidiInput = _nativeLib.lookupFunction<
     Int32 Function(Int32 port, Int64 callbackPort),
     int Function(int port, int callbackPort)>('openMidiInput');
 
-final _startMidiInput = _nativeLib
-    .lookupFunction<Int32 Function(), int Function()>('startMidiInput');
+final _startMidiInput =
+    _nativeLib.lookupFunction<Int32 Function(Int32 i), int Function(int i)>(
+        'startMidiInput');
 
-final _stopMidiInput = _nativeLib
-    .lookupFunction<Int32 Function(), int Function()>('stopMidiInput');
+final _stopMidiInput =
+    _nativeLib.lookupFunction<Int32 Function(Int32 i), int Function(int i)>(
+        'stopMidiInput');
 
-final _closeMidiInput = _nativeLib
-    .lookupFunction<Int32 Function(), int Function()>('closeMidiInput');
+final _closeMidiInput =
+    _nativeLib.lookupFunction<Int32 Function(Int32 i), int Function(int i)>(
+        'closeMidiInput');
 
 class MusicLibWindows {
   //Put method channel functions in here
   static const MethodChannel _channel = MethodChannel('music_lib_windows');
+  static bool _initialized = false;
 
   static Future<String?> get sayHello async {
     final String? version = await _channel.invokeMethod('sayHello');
@@ -45,44 +49,59 @@ class MusicLibWindows {
   }
   //Put method channel functions in here
 
-  ReceivePort receivePort = ReceivePort('Win32MidiReceivePort');
-  StreamSubscription<dynamic>? portSubscription;
+  static final Map<int, ReceivePort> _receivePorts = {};
+  static final Map<int, StreamSubscription<dynamic>> _portSubscriptions = {};
 
-  MusicLibWindows() {
-    _nRegisterPostCObject(NativeApi.postCObject);
+  static void _init() {
+    if (!_initialized) {
+      _registerPostCObject(NativeApi.postCObject);
+      _initialized = true;
+    }
   }
 
-  int getMidiDeviceIndexes() {
+  static int getMidiDeviceIndexes() {
     return _getMidiDeviceIndexes();
   }
 
-  MIDIINCAPS getMidiInDeviceCapabilities(int deviceIndex) {
+  static MIDIINCAPS getMidiInDeviceCapabilities(int deviceIndex) {
     return _getMidiInDeviceCapabilities(deviceIndex);
   }
 
-  int openMidiInput(
+  static bool subscribeMidiInput(
       int midiPort, void Function(int midiPort, MidiMessage message) callback) {
-    portSubscription = receivePort.listen((message) {
-      var port = midiPort;
-      var messageList = message as List<dynamic>;
-      var castList = messageList.cast<int>();
-      callback(port, MidiMessage.fromNativeMessage(castList));
-    });
-    return _nOpenMidiInput(midiPort, receivePort.sendPort.nativePort);
+    _init();
+    if (!_receivePorts.containsKey(midiPort)) {
+      var receivePort = ReceivePort("Win32MidiReceivePort$midiPort");
+      _receivePorts[midiPort] = receivePort;
+      var portSubscription = receivePort.listen((message) {
+        var messageList = message as List<dynamic>;
+        var castList = messageList.cast<int>();
+        callback(castList[0], MidiMessage.fromNativeMessage(castList));
+      });
+      _portSubscriptions[midiPort] = portSubscription;
+      int result = 0;
+      result = _openMidiInput(midiPort, receivePort.sendPort.nativePort);
+      if (result == 0) {
+        result = _startMidiInput(midiPort);
+      }
+      return result == 0;
+    } else {
+      return false;
+    }
   }
 
-  int startMidiInput() {
-    return _startMidiInput();
-  }
-
-  int stopMidiInput() {
-    return _stopMidiInput();
-  }
-
-  int closeMidiInput() {
-    portSubscription?.cancel();
-    receivePort.close();
-    return _closeMidiInput();
+  static bool unsubscribeMidiInput(int midiPort) {
+    if (_receivePorts.containsKey(midiPort)) {
+      _stopMidiInput(midiPort);
+      _closeMidiInput(midiPort);
+      _portSubscriptions[midiPort]?.cancel();
+      _receivePorts[midiPort]?.close();
+      _portSubscriptions.remove(midiPort);
+      _receivePorts.remove(midiPort);
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
@@ -193,12 +212,12 @@ class MidiMessage {
 
   factory MidiMessage.fromNativeMessage(List<int> message) {
     return MidiMessage(
-      messageEnumMap.containsKey(message[0])
-          ? messageEnumMap[message[0]]!
+      messageEnumMap.containsKey(message[1])
+          ? messageEnumMap[message[1]]!
           : MidiMessageType.UNKNOWN,
-      message[1],
-      message[3],
-      data: MidiData.fromFourByteInt(message[2]),
+      message[2],
+      message[4],
+      data: MidiData.fromFourByteInt(message[3]),
     );
   }
 

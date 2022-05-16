@@ -19,7 +19,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _hello = 'Unknown';
-  final _musicLib = MusicLibWindows();
 
   @override
   void initState() {
@@ -41,17 +40,6 @@ class _MyAppState extends State<MyApp> {
     } on PlatformException {
       hello = 'Failed to get hello.';
     }
-
-    int devices = _musicLib.getMidiDeviceIndexes();
-    for (var i = 0; i < devices; ++i) {
-      var cap = _musicLib.getMidiInDeviceCapabilities(i);
-      print(
-          "device $i: ${cap.szPname} dwSupport: ${cap.dwSupport} vDriverVersion: ${cap.vDriverVersion}");
-      var musicLib = MusicLibWindows();
-      musicLib.openMidiInput(i, onMidiMessage);
-      musicLib.startMidiInput();
-    }
-
     // If the widget was removed from the tree while the asynchronous platform
     // message was in flight, we want to discard the reply rather than calling
     // setState to update our non-existent appearance.
@@ -60,6 +48,23 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _hello = hello;
     });
+
+    int devices = MusicLibWindows.getMidiDeviceIndexes();
+    for (var i = 0; i < devices; ++i) {
+      var cap = MusicLibWindows.getMidiInDeviceCapabilities(i);
+      print(
+          "device $i: ${cap.szPname} dwSupport: ${cap.dwSupport} vDriverVersion: ${cap.vDriverVersion}");
+      MusicLibWindows.subscribeMidiInput(i, onMidiMessage);
+    }
+  }
+
+  @override
+  void dispose() {
+    int devices = MusicLibWindows.getMidiDeviceIndexes();
+    for (var i = 0; i < devices; ++i) {
+      MusicLibWindows.unsubscribeMidiInput(i);
+    }
+    super.dispose();
   }
 
   @override
