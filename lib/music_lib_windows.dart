@@ -125,8 +125,9 @@ class MidiData {
   final int? value;
   final int? controller;
   final int? program;
+  final List<int> data;
 
-  MidiData(this.status, this.channel,
+  MidiData(this.status, this.channel, this.data,
       {this.note, this.value, this.controller, this.program});
 
   factory MidiData.fromFourByteInt(int fourByteInt) {
@@ -135,6 +136,8 @@ class MidiData {
     final channel = statusByte & 0x0F;
     final firstByte = getByteFromPosition(fourByteInt, 1);
     final secondByte = getByteFromPosition(fourByteInt, 2);
+    final data = [statusByte, firstByte, secondByte];
+
     MidiStatusFlag status;
     int? note;
     int? value;
@@ -192,7 +195,7 @@ class MidiData {
           status = MidiStatusFlag.System;
         }
     }
-    return MidiData(status, channel,
+    return MidiData(status, channel, data,
         note: note, value: value, controller: controller, program: program);
   }
 
